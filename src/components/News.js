@@ -16,51 +16,67 @@ const News =(props) =>{
       return string.charAt(0).toUpperCase() + string.slice(1);
     } 
 
-    const updatenews = async()=>{
-      console.log("API KEY:", props.apikey);
-      props.setprogress(10);
-      const url = `https://newsapi.org/v2/top-headlines?category=${props.category}&apiKey=${props.apikey}&page=${page}&pageSize=15`;
-        setloading(true)
-        let data = await fetch(url);
-        let parseData = await data.json();
+    const updatenews = async () => {
+      try {
+        console.log("API KEY:", props.apikey);
+        props.setprogress(10);
+        const url = `https://newsapi.org/v2/top-headlines?category=${props.category}&apiKey=${props.apikey}&page=${page}&pageSize=15`;
+        console.log("REQUEST URL:", url);
+        setloading(true);
+        const response = await fetch(url);
+        console.log("STATUS:", response.status);
+        console.log("STATUS TEXT:", response.statusText);
+        const parseData = await response.json();
+        console.log("DEPLOYED RESPONSE:", parseData);
         props.setprogress(70);
-        setarticles(parseData.articles)
-        settotalResults(parseData.totalResults)
-        setloading(false)
+        setarticles(parseData.articles || []);
+        settotalResults(parseData.totalResults || 0);
+        setloading(false);
         props.setprogress(100);
+      } catch (error) {
+        console.error("UPDATE NEWS ERROR:", error);
+        setarticles([]);
+        settotalResults(0);
+        setloading(false);
+      }
     };
-    
+
+
     useEffect(() => {
       document.title = `${captailize(props.category)} - NewsMonkey`;
       updatenews();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },[])
 
-    const fetchMoreData = async ()=>{
-      try{
+    const fetchMoreData = async () => {
+      try {
         const nextPage = page + 1;
         const url = `https://newsapi.org/v2/top-headlines?category=${props.category}&apiKey=${props.apikey}&page=${nextPage}&pageSize=15`;
-        setpage(prev => prev + 1)
-        let data = await fetch(url);
-        let parseData = await data.json();
-        setarticles(articles.concat(parseData.articles || [] ))
-        settotalResults(parseData.totalResults)
-      }catch(error){
-        console.error("error fetching more news",error);
+        const response = await fetch(url);
+        console.log("FETCH MORE STATUS:", response.status);
+        const parseData = await response.json();
+        console.log("FETCH MORE RESPONSE:", parseData);
+        setpage(nextPage);
+        setarticles(prev =>
+          prev.concat(parseData.articles || [])
+        );
+        settotalResults(parseData.totalResults || 0);
+      } catch (error) {
+        console.error("ERROR FETCHING MORE NEWS:", error);
       }
-    }
+    };
   return (
     <>
       <h2 className='text-center' style={{margin:'35px 0px' , marginTop:'90px'}}>NewsMonkey - {captailize(props.category)} Headlines</h2>
       {loading && <Spinner/>}
       <InfiniteScroll
-        dataLength={articles.length}
+        dataLength={articles?.length || 0}
         next={fetchMoreData}
-        hasMore={articles.length !== totalResults}
+        hasMore={(articles?.length || 0) < totalResults}
         loader={<Spinner/>}>
       <div className='container'>
           <div className='row' >
-            {articles.map((element)=> {
+            {(articles || []).map((element)=> {
                 return <div className='col-lg-4 col-md-6 col-sm-12 my-3 d-flex justify-content-center' key={element.url}>
               <NewsItem title={element.title?element.title:""} source={element.source.name}
               description={element.description?element.description:""}
